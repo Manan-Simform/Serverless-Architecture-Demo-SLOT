@@ -1,0 +1,206 @@
+service: ${sls:stage}-${env:AWS_REGION_INITIAL}-slot
+useDotenv: true
+
+package:
+  individually: false
+  patterns:
+    - "!*.env"
+
+plugins:
+  - serverless-plugin-common-excludes
+  # - serverless-plugin-include-dependencies
+  - serverless-dotenv-plugin
+  - serverless-offline
+  - serverless-prune-plugin
+
+provider:
+  name: aws
+  runtime: nodejs18.x
+  region: ca-central-1
+  stackName: ${sls:stage}-${env:AWS_REGION_INITIAL}-slot
+  deploymentBucket:
+    name: ${sls:stage}-${env:AWS_REGION_INITIAL}-serverless-deployment
+    maxPreviousDeploymentArtifacts: 2
+    blockPublicAccess: true
+    skipPolicySetup: true
+    versioning: false
+  apiGateway:
+    restApiId: ${env:REST_API_ID}
+    restApiRootResourceId: ${env:REST_API_RESOURCE_ID}
+  iamRoleStatements:
+    - Effect: Allow
+      Action:
+        - lambda:InvokeFunction
+        - lambda:InvokeAsync
+      Resource: "*"
+    - Effect: Allow
+      Action:
+        - dynamodb:BatchGet*
+        - dynamodb:DescribeTable
+        - dynamodb:Get*
+        - dynamodb:Query
+        - dynamodb:Scan
+        - dynamodb:BatchWrite*
+        - dynamodb:Delete*
+        - dynamodb:Update*
+        - dynamodb:PutItem
+      Resource: "*"
+
+custom:
+  prune:
+    automatic: true
+    number: 2
+
+resources:
+  Resources:
+    SlotDynamoDbTable:
+      Type: "AWS::DynamoDB::Table"
+      Properties:
+        AttributeDefinitions:
+          - AttributeName: id
+            AttributeType: S
+          - AttributeName: scheduleId
+            AttributeType: S
+        KeySchema:
+          - AttributeName: id
+            KeyType: HASH
+          - AttributeName: scheduleId
+            KeyType: RANGE
+        GlobalSecondaryIndexes:
+          - IndexName: scheduleId-index
+            KeySchema:
+              - AttributeName: scheduleId
+                KeyType: HASH
+            Projection:
+              ProjectionType: ALL
+            ProvisionedThroughput:
+              ReadCapacityUnits: 5
+              WriteCapacityUnits: 5
+        ProvisionedThroughput:
+          ReadCapacityUnits: 5
+          WriteCapacityUnits: 5
+        TableName: ${sls:stage}-${env:AWS_REGION_INITIAL}-slot
+        Tags:
+          - Key: platform
+            Value: Demo
+          - Key: platform-environment
+            Value: ${sls:stage}
+          - Key: platform-component
+            Value: platform
+          - Key: platform-region
+            Value: ${env:AWS_REGION_INITIAL}
+          - Key: platform-service
+            Value: slot
+
+functions:
+  createSlot:
+    handler: slots.create
+    name: ${sls:stage}-${env:AWS_REGION_INITIAL}-slot-createSlot
+    events:
+      - http:
+          path: slot
+          method: post
+          cors: true
+          authorizer:
+            type: COGNITO_USER_POOLS
+            authorizerId: ${env:AUTHORIZER_ID}
+    environment:
+      AWS_COGNITO_USERPOOL_ID: ${env:AWS_COGNITO_USERPOOL_ID}
+      AWS_COGNITO_CLIENT_ID: ${env:AWS_COGNITO_CLIENT_ID}
+      AWS_COGNITO_AUTHORIZER_ARN: ${env:AWS_COGNITO_AUTHORIZER_ARN}
+      REST_API_ID: ${env:REST_API_ID}
+      REST_API_RESOURCE_ID: ${env:REST_API_RESOURCE_ID}
+      AUTHORIZER_ID: ${env:AUTHORIZER_ID}
+      ENCRYPTION_KEY: ${env:ENCRYPTION_KEY}
+      APP_STAGE: ${sls:stage}
+      AWS_REGION_INITIAL: ${env:AWS_REGION_INITIAL}
+    tags:
+      platform: Demo
+      platform-environment: ${sls:stage}
+      platform-component: platform
+      platform-region: ${env:AWS_REGION_INITIAL}
+      platform-service: slot
+
+  getSlot:
+    handler: slots.getSlotsBySchedule
+    name: ${sls:stage}-${env:AWS_REGION_INITIAL}-slot-getSlot
+    events:
+      - http:
+          path: slot
+          method: get
+          cors: true
+          authorizer:
+            type: COGNITO_USER_POOLS
+            authorizerId: ${env:AUTHORIZER_ID}
+    environment:
+      AWS_COGNITO_USERPOOL_ID: ${env:AWS_COGNITO_USERPOOL_ID}
+      AWS_COGNITO_CLIENT_ID: ${env:AWS_COGNITO_CLIENT_ID}
+      AWS_COGNITO_AUTHORIZER_ARN: ${env:AWS_COGNITO_AUTHORIZER_ARN}
+      REST_API_ID: ${env:REST_API_ID}
+      REST_API_RESOURCE_ID: ${env:REST_API_RESOURCE_ID}
+      AUTHORIZER_ID: ${env:AUTHORIZER_ID}
+      ENCRYPTION_KEY: ${env:ENCRYPTION_KEY}
+      APP_STAGE: ${sls:stage}
+      AWS_REGION_INITIAL: ${env:AWS_REGION_INITIAL}
+    tags:
+      platform: Demo
+      platform-environment: ${sls:stage}
+      platform-component: platform
+      platform-region: ${env:AWS_REGION_INITIAL}
+      platform-service: slot
+
+  updateSlot:
+    handler: slots.update
+    name: ${sls:stage}-${env:AWS_REGION_INITIAL}-slot-updateSlot 
+    events:
+      - http:
+          path: slot
+          method: put
+          cors: true
+          authorizer:
+            type: COGNITO_USER_POOLS
+            authorizerId: ${env:AUTHORIZER_ID}
+    environment:
+      AWS_COGNITO_USERPOOL_ID: ${env:AWS_COGNITO_USERPOOL_ID}
+      AWS_COGNITO_CLIENT_ID: ${env:AWS_COGNITO_CLIENT_ID}
+      AWS_COGNITO_AUTHORIZER_ARN: ${env:AWS_COGNITO_AUTHORIZER_ARN}
+      REST_API_ID: ${env:REST_API_ID}
+      REST_API_RESOURCE_ID: ${env:REST_API_RESOURCE_ID}
+      AUTHORIZER_ID: ${env:AUTHORIZER_ID}
+      ENCRYPTION_KEY: ${env:ENCRYPTION_KEY}
+      APP_STAGE: ${sls:stage}
+      AWS_REGION_INITIAL: ${env:AWS_REGION_INITIAL}
+    tags:
+      platform: Demo
+      platform-environment: ${sls:stage}
+      platform-component: platform
+      platform-region: ${env:AWS_REGION_INITIAL}
+      platform-service: slot
+
+  deleteSlot:
+    handler: slots.delete
+    name: ${sls:stage}-${env:AWS_REGION_INITIAL}-slot-deleteSlot
+    events:
+      - http:
+          path: slot/{id}
+          method: delete
+          cors: true
+          authorizer:
+            type: COGNITO_USER_POOLS
+            authorizerId: ${env:AUTHORIZER_ID}
+    environment:
+      AWS_COGNITO_USERPOOL_ID: ${env:AWS_COGNITO_USERPOOL_ID}
+      AWS_COGNITO_CLIENT_ID: ${env:AWS_COGNITO_CLIENT_ID}
+      AWS_COGNITO_AUTHORIZER_ARN: ${env:AWS_COGNITO_AUTHORIZER_ARN}
+      REST_API_ID: ${env:REST_API_ID}
+      REST_API_RESOURCE_ID: ${env:REST_API_RESOURCE_ID}
+      AUTHORIZER_ID: ${env:AUTHORIZER_ID}
+      ENCRYPTION_KEY: ${env:ENCRYPTION_KEY}
+      APP_STAGE: ${sls:stage}
+      AWS_REGION_INITIAL: ${env:AWS_REGION_INITIAL}
+    tags:
+      platform: Demo
+      platform-environment: ${sls:stage}
+      platform-component: platform
+      platform-region: ${env:AWS_REGION_INITIAL}
+      platform-service: slot

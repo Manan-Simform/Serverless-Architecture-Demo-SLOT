@@ -1,0 +1,27 @@
+image: node:18.17.1
+pipelines:
+  branches:
+    develop:
+      - step:
+          name: Build and Test for DEV environment
+          deployment: dev
+          caches:
+            - node
+          script:
+            - npm install
+            - npm install --location=global glob
+            - npm install --location=global serverless
+            - npm install --save-dev serverless-prune-plugin
+            - serverless deploy
+    qa:
+      - step:
+          name: Build and Test for QA environment
+          deployment: qa
+          caches:
+            - node
+          script:
+            - npm install
+            - npm install --location=global glob
+            - npm install --location=global serverless
+            - npm install --save-dev serverless-prune-plugin
+            - serverless deploy --stage qa
